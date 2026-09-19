@@ -1,0 +1,144 @@
+* ============================================================
+   Project 3: Product Analytics Report
+   ------------------------------------------------------------
+   Purpose:
+   Develop a comprehensive product performance report to
+   understand which products and categories drive revenue,
+   order volume, and customer reach.
+ 
+   Key Metrics:
+   - Total Revenue
+   - Total Revenue Per Category
+   - Total Orders
+   - Total Orders Per Category
+   - Total Quantity Sold
+   - Average Selling Price
+   - Average Revenue Per Order
+   - Number of Customers Purchasing
+   - Customers Per Category
+ 
+   Product Dimensions:
+   - Category / Subcategory
+   - Color
+   - List Price
+   ============================================================ */
+ 
+COPY(
+    WITH product_details AS (
+        SELECT
+            p.ProductID,
+            p.ProductNumber,
+            p.Name AS ProductName,
+            c.Name AS CategoryName,
+            s.Name AS SubcategoryName,
+            p.Color,
+            p.ListPrice
+ 
+        FROM read_csv_auto('Production Product.csv') p
+ 
+        LEFT JOIN read_csv_auto('Production ProductSubcategory.csv') s
+            ON p.ProductSubcategoryID = s.ProductSubcategoryID
+ 
+        LEFT JOIN read_csv_auto('Production ProductCategory.csv') c
+            ON s.ProductCategoryID = c.ProductCategoryID
+    ),
+ 
+    product_sales AS (
+        SELECT
+            d.ProductID,
+            h.SalesOrderID,
+            h.CustomerID,
+            d.OrderQty,
+            d.UnitPrice,
+            d.LineTotal
+ 
+        FROM read_csv_auto('Sales SalesOrderDetail.csv') d
+ 
+        LEFT JOIN read_csv_auto('Sales SalesOrderHeader.csv') h
+            ON d.SalesOrderID = h.SalesOrderID
+    ),
+ 
+    product_metrics AS (
+        SELECT
+            p.ProductID,
+            p.ProductNumber,
+            p.ProductName,
+            p.CategoryName,
+            p.SubcategoryName,
+            p.Color,
+            p.ListPrice,
+ 
+            COALESCE(SUM(s.LineTotal), 0) AS TotalRevenue,
+ 
+            COUNT(DISTINCT s.SalesOrderID) AS TotalOrders,
+ 
+            COALESCE(SUM(s.OrderQty), 0) AS TotalQuantitySold,
+ 
+            ROUND(
+                SUM(s.LineTotal) /
+                NULLIF(SUM(s.OrderQty), 0),
+                2
+            ) AS AverageSellingPrice,
+ 
+            ROUND(
+                SUM(s.LineTotal) /
+                NULLIF(COUNT(DISTINCT s.SalesOrderID), 0),
+                2
+            ) AS AverageRevenuePerOrder,
+ 
+            COUNT(DISTINCT s.CustomerID) AS NumberOfCustomersPurchasing
+ 
+        FROM product_details p
+ 
+        LEFT JOIN product_sales s
+            ON p.ProductID = s.ProductID
+ 
+        GROUP BY
+            p.ProductID,
+            p.ProductNumber,
+            p.ProductName,
+            p.CategoryName,
+            p.SubcategoryName,
+            p.Color,
+            p.ListPrice
+    ),
+ 
+    category_metrics AS (
+        SELECT
+            p.CategoryName,
+            COALESCE(SUM(s.LineTotal), 0) AS TotalRevenuePerCategory,
+            COUNT(DISTINCT s.SalesOrderID) AS TotalOrderPerCategory,
+            COUNT(DISTINCT s.CustomerID) AS CustomerPerCategory
+        FROM product_details p
+        LEFT JOIN product_sales s
+            ON p.ProductID = s.ProductID
+        GROUP BY p.CategoryName
+    )
+ 
+    SELECT
+        p.ProductID,
+        p.ProductNumber,
+        p.ProductName,
+        p.CategoryName,
+        p.SubcategoryName,
+        p.Color,
+        p.ListPrice,
+        p.TotalRevenue,
+        c.TotalRevenuePerCategory,
+        p.TotalOrders,
+        c.TotalOrderPerCategory,
+        p.TotalQuantitySold,
+        p.AverageSellingPrice,
+        p.AverageRevenuePerOrder,
+        p.NumberOfCustomersPurchasing,
+        c.CustomerPerCategory
+    FROM product_metrics p
+    LEFT JOIN category_metrics c
+        ON p.CategoryName IS NOT DISTINCT FROM c.CategoryName
+    ORDER BY TotalRevenue DESC
+) TO 'Product_Analytics.csv'
+ 
+WITH (HEADER, DELIMITER ',');
+ 
+
+
