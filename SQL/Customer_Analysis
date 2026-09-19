@@ -1,0 +1,136 @@
+Customer analytics · SQL
+/* ============================================================
+   Project 2: Customer Analytics Report
+   ------------------------------------------------------------
+   Purpose:
+   Develop a comprehensive customer performance report to
+   understand customer purchasing behavior, customer value,
+   and long-term engagement.
+ 
+   Key Metrics:
+   - Total Orders
+   - Total Revenue
+   - Total Revenue Per Region
+   - Total Orders Per Region
+   - Average Order Value
+   - Average Monthly Spend
+   - Total Quantity Purchased
+   - Total Products Purchased
+   - Customer Lifespan (Months)
+   - First Purchase Date
+   - Last Purchase Date
+ 
+   Customer Segmentation:
+   - VIP Customers      (Lifespan >= 25 months OR Revenue >= $5,000)
+   - Loyal Customers    (Lifespan < 25 months AND Revenue < $5,000)
+   - Regular Customers  (Lifespan < 15 months AND Revenue < $3,000)
+   - New Customers      (Lifespan < 5 months AND Revenue < $1,000)
+   - Other              (customers that don't fit the above rules)
+   ============================================================ */
+ 
+COPY (
+    WITH customer_sales AS (
+    SELECT
+        c.CustomerID,
+        c.PersonID,
+        p.FirstName,
+        p.LastName,
+        h.SalesOrderID,
+        CAST(CAST(OrderDate AS TIMESTAMP) AS DATE) AS OrderDate,
+        d.ProductID,
+        d.OrderQty,
+        d.LineTotal,
+        t.Name AS Region
+    FROM read_csv_auto('Sales Customer.csv') c
+ 
+    LEFT JOIN read_csv_auto('Person Person.csv') p
+        ON c.PersonID = p.BusinessEntityID
+ 
+    LEFT JOIN read_csv_auto('Sales SalesOrderHeader.csv') h
+        ON c.CustomerID = h.CustomerID
+ 
+    LEFT JOIN read_csv_auto('Sales SalesOrderDetail.csv') d
+        ON h.SalesOrderID = d.SalesOrderID
+    LEFT JOIN read_csv_auto('Sales SalesTerritory.csv') t
+        ON c.TerritoryID = t.TerritoryID
+),
+ 
+customer_metrics AS (
+    SELECT
+        CustomerID,
+        FirstName || ' ' || LastName AS FullName,
+        Region,
+        COUNT(DISTINCT SalesOrderID) AS TotalOrders,
+ 
+        SUM(LineTotal) AS TotalRevenue,
+ 
+        SUM(SUM(LineTotal)) OVER (PARTITION BY Region) AS TotalRevenuePerRegion,
+ 
+        SUM(COUNT(DISTINCT SalesOrderID)) OVER (PARTITION BY Region) AS TotalOrdersPerRegion,
+ 
+        ROUND(
+            SUM(LineTotal) / NULLIF(COUNT(DISTINCT SalesOrderID), 0),
+            2
+        ) AS AverageOrderValue,
+ 
+        SUM(OrderQty) AS TotalQuantityPurchased,
+ 
+        COUNT(DISTINCT ProductID) AS TotalProductsPurchased,
+ 
+        MIN(OrderDate) AS FirstPurchaseDate,
+ 
+        MAX(OrderDate) AS LastPurchaseDate
+ 
+    FROM customer_sales
+ 
+    GROUP BY
+        CustomerID,
+        FirstName,
+        LastName,
+        Region
+),
+ 
+customer_lifespan AS (
+    SELECT *,
+        DATE_DIFF(
+            'month',
+            FirstPurchaseDate,
+            LastPurchaseDate
+        ) AS CustomerLifespanMonths
+    FROM customer_metrics
+)
+ 
+SELECT *,
+    ROUND(
+        TotalRevenue /
+        NULLIF(GREATEST(CustomerLifespanMonths, 1), 0),
+        2
+    ) AS AverageMonthlySpend,
+    CASE
+        WHEN CustomerLifespanMonths < 5
+             AND TotalRevenue < 1000
+            THEN 'New'
+ 
+        WHEN CustomerLifespanMonths < 15
+             AND TotalRevenue < 3000
+            THEN 'Regular'
+ 
+        WHEN CustomerLifespanMonths < 25
+             AND TotalRevenue < 5000
+            THEN 'Loyal'
+ 
+        WHEN CustomerLifespanMonths >= 25
+             OR TotalRevenue >= 5000
+            THEN 'VIP'
+ 
+        ELSE 'Other'
+    END AS CustomerSegment
+FROM customer_lifespan
+ 
+ORDER BY TotalRevenue DESC
+)
+TO 'customer_analytics.csv'
+WITH (HEADER, DELIMITER ',');
+ 
+
+
