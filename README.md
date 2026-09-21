@@ -133,4 +133,5 @@ Pulling the two analyses together:
 
 # Conclusion
 
-This project took raw AdventureWorks CSVs, ran them through a DuckDB-based SQL pipeline to build two purpose-built analytical datasets, and turned them into an interactive Power BI view of the business. Beyond the specific findings — Bikes as the dominant category, Southwest as the leading region, New customers as the largest and most active segment — this project was as much practice in **building a repeatable SQL-to-BI workflow** as it was in the analysis itself: from raw CSV, to modeled metrics in DuckDB, to a dashboard someone could actually use to make decisions.
+This project took raw AdventureWorks CSVs, ran them through a DuckDB-based SQL pipeline to build two purpose-built analytical datasets, and turned them into an interactive Power BI view of the business. Beyond the specific findings — Bikes as the dominant category, Southwest as the leading region, New customers as the largest and most active segment — this project was as
+much practice in **building a repeatable SQL-to-BI workflow** as it was in the analysis itself: from raw CSV, to modeled metrics in DuckDB, to a dashboard someone could actually use to make decisions.
