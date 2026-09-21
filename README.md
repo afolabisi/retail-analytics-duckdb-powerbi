@@ -62,7 +62,8 @@ product_sales AS (
 
 ### Result
 
-![Product Analytics Dashboard](images/product_analytics_dashboard.png)
+![Product Analytics Dashboard](Image
+/Product_Analysis_Dashboard.png)
 
 *Power BI dashboard showing total revenue, orders, quantity sold, product count, and breakdowns by category, product, and color.*
 
