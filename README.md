@@ -62,7 +62,7 @@ product_sales AS (
 
 ### Result
 
-![Product Analytics Dashboard](github.com/afolabisi/retail-analytics-duckdb-powerbi/blob/main/Dashboard/Image/Product_Analysis_Dashboard.png)
+![Product Analytics Dashboard](Dashboard/Image/Product_Analysis_Dashboard.png))
 
 *Power BI dashboard showing total revenue, orders, quantity sold, product count, and breakdowns by category, product, and color.*
 
