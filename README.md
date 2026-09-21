@@ -103,7 +103,7 @@ WITH customer_sales AS (
 
 ### Result
 
-![Customer Analytics Dashboard](Dashboard/image/customer_analytics_dashboard.png)
+![Customer Analytics Dashboard](Dashboard/image/Customer_Analytics_Dashboard.png)
 
 *Power BI dashboard showing customer segments, regional distribution, top customers, and revenue/orders by region.*
 
