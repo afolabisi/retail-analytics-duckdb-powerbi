@@ -29,7 +29,47 @@ To build this analysis, I relied on:
 
 # The Analysis
 
-## 1. Product Analytics
+## . Customer Analytics
+
+### How are customers segmented, and which customers/regions matter most?
+
+For this, I built a `customer_sales` → `customer_metrics` → `customer_lifespan` pipeline: joining customer, person, sales order, and territory tables to get revenue, order count, average order value, quantity purchased, and first/last purchase dates per customer. I then calculated `CustomerLifespanMonths` and average monthly spend, and used a `CASE` statement to bucket customers into **New, Regular, Loyal, and VIP** segments based on lifespan and total revenue thresholds.
+
+### Query
+
+```sql
+WITH customer_sales AS (
+    SELECT
+        c.CustomerID, c.PersonID, p.FirstName, p.LastName,
+        h.SalesOrderID, CAST(CAST(OrderDate AS TIMESTAMP) AS DATE) AS OrderDate,
+        d.ProductID, d.OrderQty, d.LineTotal, t.Name AS Region
+    FROM read_csv_auto('Sales Customer.csv') c
+    LEFT JOIN read_csv_auto('Person Person.csv') p ON c.PersonID = p.BusinessEntityID
+    LEFT JOIN read_csv_auto('Sales SalesOrderHeader.csv') h ON c.CustomerID = h.CustomerID
+    LEFT JOIN read_csv_auto('Sales SalesOrderDetail.csv') d ON h.SalesOrderID = d.SalesOrderID
+    LEFT JOIN read_csv_auto('Sales SalesTerritory.csv') t ON c.TerritoryID = t.TerritoryID
+)
+-- customer_metrics + customer_lifespan CTEs calculate revenue, orders, lifespan,
+-- then a CASE statement assigns each customer to New / Regular / Loyal / VIP
+```
+
+*(Full query, including the segmentation `CASE` logic, is in `/sql` in this repo.)*
+
+### Result
+
+!![Customer Analytics Dashboard](Dashboard/Image/Customer_Analytics_Dashboard.png)
+
+*Power BI dashboard showing customer segments, regional distribution, top customers, and revenue/orders by region.*
+
+### Insights
+
+- Out of **19.82K total customers**, the **New** segment is by far the largest group, followed by Regular, VIP, and Loyal — suggesting either strong recent customer acquisition or a segmentation threshold that classifies most of the base as "New" by default.
+- Despite being the largest segment by headcount, **New customers also generate the highest total order volume (11.9K)**, ahead of VIP (8.7K), Regular (6.8K), and Loyal (4.9K) — worth checking whether this reflects genuinely high early engagement or simply the size of the segment.
+- The **Southwest region leads on both customer count and order volume**, with Northwest and Australia as the next-largest markets — the business shows a clear geographic concentration rather than an even spread.
+- The top-10 customers by revenue and orders bar chart shows a fairly gradual decline rather than one or two extreme outliers — revenue is spread across a solid group of high-value customers rather than dependent on a single account.
+- Revenue by region broadly follows the same ranking as order count by region, reinforcing that the Southwest/Northwest markets aren't just ordering more often but are also the largest revenue contributors.
+
+## 2. Product Analytics
 
 ### How does the business perform overall, and which categories and colors drive revenue?
 
@@ -73,46 +113,6 @@ product_sales AS (
 - Revenue by color shows a clear concentration at the top: **black-colored products lead revenue generation**, with a steep drop-off after the top few colors, suggesting color/finish plays a real role in purchase decisions for this catalog.
 - The revenue-vs-orders scatter by product highlights that a handful of products account for disproportionately high order volume and revenue relative to the rest of the catalog — classic 80/20 behavior worth digging into for restocking/marketing priority.
 - Category share of orders (pie chart) confirms Bikes as the volume driver, with Accessories as a secondary contributor and Clothing/Components making up the smallest slices.
-
-## 2. Customer Analytics
-
-### How are customers segmented, and which customers/regions matter most?
-
-For this, I built a `customer_sales` → `customer_metrics` → `customer_lifespan` pipeline: joining customer, person, sales order, and territory tables to get revenue, order count, average order value, quantity purchased, and first/last purchase dates per customer. I then calculated `CustomerLifespanMonths` and average monthly spend, and used a `CASE` statement to bucket customers into **New, Regular, Loyal, and VIP** segments based on lifespan and total revenue thresholds.
-
-### Query
-
-```sql
-WITH customer_sales AS (
-    SELECT
-        c.CustomerID, c.PersonID, p.FirstName, p.LastName,
-        h.SalesOrderID, CAST(CAST(OrderDate AS TIMESTAMP) AS DATE) AS OrderDate,
-        d.ProductID, d.OrderQty, d.LineTotal, t.Name AS Region
-    FROM read_csv_auto('Sales Customer.csv') c
-    LEFT JOIN read_csv_auto('Person Person.csv') p ON c.PersonID = p.BusinessEntityID
-    LEFT JOIN read_csv_auto('Sales SalesOrderHeader.csv') h ON c.CustomerID = h.CustomerID
-    LEFT JOIN read_csv_auto('Sales SalesOrderDetail.csv') d ON h.SalesOrderID = d.SalesOrderID
-    LEFT JOIN read_csv_auto('Sales SalesTerritory.csv') t ON c.TerritoryID = t.TerritoryID
-)
--- customer_metrics + customer_lifespan CTEs calculate revenue, orders, lifespan,
--- then a CASE statement assigns each customer to New / Regular / Loyal / VIP
-```
-
-*(Full query, including the segmentation `CASE` logic, is in `/sql` in this repo.)*
-
-### Result
-
-![Customer Analytics Dashboard](Dashboard/image/Customer_Analytics_Dashboard.png)
-
-*Power BI dashboard showing customer segments, regional distribution, top customers, and revenue/orders by region.*
-
-### Insights
-
-- Out of **19.82K total customers**, the **New** segment is by far the largest group, followed by Regular, VIP, and Loyal — suggesting either strong recent customer acquisition or a segmentation threshold that classifies most of the base as "New" by default.
-- Despite being the largest segment by headcount, **New customers also generate the highest total order volume (11.9K)**, ahead of VIP (8.7K), Regular (6.8K), and Loyal (4.9K) — worth checking whether this reflects genuinely high early engagement or simply the size of the segment.
-- The **Southwest region leads on both customer count and order volume**, with Northwest and Australia as the next-largest markets — the business shows a clear geographic concentration rather than an even spread.
-- The top-10 customers by revenue and orders bar chart shows a fairly gradual decline rather than one or two extreme outliers — revenue is spread across a solid group of high-value customers rather than dependent on a single account.
-- Revenue by region broadly follows the same ranking as order count by region, reinforcing that the Southwest/Northwest markets aren't just ordering more often but are also the largest revenue contributors.
 
 # What I Learned
 
